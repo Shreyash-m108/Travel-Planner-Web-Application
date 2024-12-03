@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Destinations - Travel Planner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" rel="stylesheet" />
+    <link href="/css/style.css" rel="stylesheet">
+    <style>
+        .map-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">Travel Planner</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" 
+                    data-bs-target="#navbarNav" aria-controls="navbarNav" 
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/trips">My Trips</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/profile">Profile</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5 pt-5">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="mb-0">Destinations</h2>
+                    <a th:href="@{/destinations/trip/{tripId}/new(tripId=${tripId})}" class="btn btn-primary">
+                        <i class="bi bi-plus-lg"></i> Add Destination
+                    </a>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-6" th:each="destination : ${destinations}">
+                        <div class="card h-100 border-0 shadow-sm hover-card">
+                            <div class="card-body">
+                                <h5 class="card-title" th:text="${destination.name}">Destination Name</h5>
+                                <p class="card-text text-muted" th:text="${destination.description}">Description</p>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="bi bi-geo-alt text-primary me-2"></i>
+                                    <small th:text="${destination.address}">Address</small>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button class="btn btn-outline-danger btn-sm" 
+                                            data-bs-toggle="modal" 
+                                            th:data-bs-target="'#deleteModal' + ${destination.id}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Delete Modal for each destination -->
+                        <div class="modal fade" th:id="'deleteModal' + ${destination.id}" tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Delete Destination</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        Are you sure you want to delete <span th:text="${destination.name}"></span>?
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                        <form th:action="@{/destinations/{id}(id=${destination.id})}" method="post">
+                                            <input type="hidden" name="_method" value="DELETE">
+                                            <input type="hidden" name="_csrf" th:value="${_csrf.token}">
+                                            <button type="submit" class="btn btn-danger">Delete</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm sticky-top" style="top: 100px">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Map View</h5>
+                        <div id="map" style="height: 400px;" class="rounded-3 mb-3 position-relative">
+                            <div class="map-loading">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading map...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Click on markers to see destination details
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script th:inline="javascript">
+        function initMap() {
+            try {
+                const map = L.map('map').setView([0, 0], 2);
+                
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+
+                document.querySelector('.map-loading').style.display = 'none';
+
+                const destinations = /*[[${destinations}]]*/ [];
+                if (destinations && destinations.length > 0) {
+                    const bounds = [];
+                    destinations.forEach((destination, index) => {
+                        if (destination.address) {
+                            setTimeout(() => {
+                                const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(destination.address)}`;
+                                fetch(url)
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data.length > 0) {
+                                            const lat = parseFloat(data[0].lat);
+                                            const lon = parseFloat(data[0].lon);
+                                            L.marker([lat, lon])
+                                                .bindPopup(destination.name)
+                                                .addTo(map);
+                                            bounds.push([lat, lon]);
+                                            if (bounds.length === destinations.length) {
+                                                map.fitBounds(bounds);
+                                            }
+                                        }
+                                    })
+                                    .catch(error => console.error('Error:', error));
+                            }, 1000 * index); // Delay each request by 1 second
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                document.querySelector('.map-loading').innerHTML = 
+                    '<div class="text-danger">Error loading map. Please refresh the page.</div>';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initMap);
+    </script>
+</body>
+</html> 

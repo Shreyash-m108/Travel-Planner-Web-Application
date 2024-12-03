@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${trip.id == null ? 'Create Trip' : 'Edit Trip'} + ' - Travel Planner'">Create/Edit Trip</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="/css/style.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="/">Travel Planner</a>
+        </div>
+    </nav>
+
+    <div class="container mt-5 pt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <h2 class="card-title mb-4" th:text="${trip.id == null ? 'Create New Trip' : 'Edit Trip'}">
+                            Create/Edit Trip
+                        </h2>
+
+                        <form th:action="${trip.id == null ? '/trips' : '/trips/' + trip.id + '/edit'}"
+                              th:object="${trip}" method="post">
+                            
+                            <input type="hidden" th:field="*{id}" th:if="${trip.id != null}" />
+                            
+                            <div class="mb-3">
+                                <label for="title" class="form-label">Trip Title</label>
+                                <input type="text" class="form-control" id="title" 
+                                       th:field="*{title}" required
+                                       placeholder="Enter trip title">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" 
+                                          th:field="*{description}" rows="3"
+                                          placeholder="Describe your trip"></textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="startDate" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="startDate" 
+                                           th:field="*{startDate}" required>
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="endDate" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="endDate" 
+                                           th:field="*{endDate}" required>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2">
+                                <a th:href="${trip.id == null ? '/trips' : '/trips/' + trip.id}" 
+                                   class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <span th:text="${trip.id == null ? 'Create Trip' : 'Save Changes'}">
+                                        Submit
+                                    </span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Add date validation
+        document.getElementById('startDate').addEventListener('change', function() {
+            document.getElementById('endDate').min = this.value;
+        });
+
+        document.getElementById('endDate').addEventListener('change', function() {
+            const startDate = document.getElementById('startDate').value;
+            if (this.value < startDate) {
+                alert('End date cannot be before start date');
+                this.value = startDate;
+            }
+        });
+    </script>
+</body>
+</html>
